@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Shorts Uploader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ═══════════════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════════════ */
+    :root {
+      --bg:       #050505;
+      --surface:  #0f0f0f;
+      --surface2: #161616;
+      --border:   #1e1e1e;
+      --border2:  #2a2a2a;
+      --red:      #e63030;
+      --red-glow: rgba(230, 48, 48, 0.18);
+      --red-dim:  rgba(230, 48, 48, 0.08);
+      --green:    #22c55e;
+      --text:     #f2f2f2;
+      --muted:    #666;
+      --sub:      #444;
+      --radius:   16px;
+      --radius-sm: 10px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      min-height: 100svh;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ── Ambient background glow ── */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -15vh; left: 50%;
+      transform: translateX(-50%);
+      width: 70vw; height: 60vw;
+      max-width: 560px; max-height: 480px;
+      background: radial-gradient(ellipse, rgba(230,48,48,0.07) 0%, transparent 68%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─ Subtle scan-line texture ─ */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.012) 2px,
+        rgba(255,255,255,0.012) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════════ */
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 52px 18px 80px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════ */
+    .header {
+      width: 100%;
+      max-width: 460px;
+      margin-bottom: 36px;
+      opacity: 0;
+      animation: revealDown 0.55s 0.05s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+
+    .wordmark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .wordmark-badge {
+      width: 44px; height: 44px;
+      background: var(--red);
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 32px var(--red-glow), 0 2px 8px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wordmark-badge::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50%;
+      background: rgba(255,255,255,0.12);
+      border-radius: 14px 14px 0 0;
+    }
+
+    .wordmark-badge svg {
+      width: 22px; height: 22px;
+      fill: white;
+      position: relative;
+      z-index: 1;
+    }
+
+    .wordmark-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .wordmark-title span { color: var(--red); }
+
+    .header-tagline {
+      font-size: 13px;
+      color: var(--muted);
+      padding-left: 56px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       CHANNELS BAR
+    ═══════════════════════════════════════════════════ */
+    .channels-bar {
+      width: 100%;
+      max-width: 460px;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: revealUp 0.55s 0.12s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+
+    .channels-bar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--sub);
+    }
+
+    .btn-add-channel {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 99px;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+    .btn-add-channel:hover {
+      border-color: var(--red);
+      color: var(--red);
+      background: var(--red-dim);
+    }
+
+    .btn-add-channel svg {
+      width: 12px; height: 12px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+    }
+
+    /* Connected channel pills */
+    .channel-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 32px;
+    }
+
+    .channel-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px 5px 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 500;
+      transition: border-color 0.2s;
+    }
+
+    .channel-pill:hover { border-color: var(--border2); }
+
+    .channel-pill .dot {
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(34,197,94,0.5);
+      flex-shrink: 0;
+    }
+
+    .channel-pill .remove-pill {
+      width: 14px; height: 14px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      transition: color 0.2s, background 0.2s;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .channel-pill .remove-pill:hover {
+      color: #f87171;
+      background: rgba(248,113,113,0.1);
+    }
+
+    .channel-pill .remove-pill svg {
+      width: 10px; height: 10px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+    }
+
+    .no-channels-hint {
+      font-size: 13px;
+      color: var(--sub);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       MAIN CARD
+    ═══════════════════════════════════════════════════ */
+    .card {
+      width: 100%;
+      max-width: 460px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 28px 22px 24px;
+      opacity: 0;
+      animation: revealUp 0.6s 0.2s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+
+    /* ── Form rows ── */
+    .form-row {
+      margin-bottom: 18px;
+    }
+
+    .form-row:last-child { margin-bottom: 0; }
+
+    .field-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: var(--sub);
+      margin-bottom: 8px;
+    }
+
+    /* ── Text / select inputs ── */
+    .input,
+    .select-wrap select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 13px 15px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .input::placeholder { color: var(--sub); }
+
+    .input:focus,
+    .select-wrap select:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px var(--red-glow);
+    }
+
+    /* Character counter */
+    .title-wrap { position: relative; }
+
+    .char-count {
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      color: var(--sub);
+      pointer-events: none;
+    }
+
+    .char-count.warn { color: #f97316; }
+    .char-count.over { color: #f87171; }
+
+    .title-wrap .input { padding-right: 48px; }
+
+    /* Select wrapper */
+    .select-wrap {
+      position: relative;
+    }
+
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      right: 15px; top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid var(--muted);
+      pointer-events: none;
+    }
+
+    .select-wrap select {
+      cursor: pointer;
+      padding-right: 38px;
+    }
+
+    .select-wrap select option {
+      background: #1a1a1a;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      position: relative;
+      background: var(--surface2);
+      border: 1.5px dashed var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      overflow: hidden;
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0;
+      width: 100%; height: 100%;
+      cursor: pointer;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--red);
+      background: var(--red-dim);
+    }
+
+    .drop-zone.has-file {
+      border-style: solid;
+      border-color: rgba(34,197,94,0.35);
+      background: rgba(34,197,94,0.04);
+    }
+
+    .dz-icon {
+      width: 44px; height: 44px;
+      background: var(--red-dim);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 12px;
+      transition: background 0.2s;
+    }
+
+    .drop-zone:hover .dz-icon,
+    .drop-zone.drag-over .dz-icon { background: var(--red-glow); }
+    .drop-zone.has-file .dz-icon  { background: rgba(34,197,94,0.1); }
+
+    .dz-icon svg {
+      width: 22px; height: 22px;
+      stroke: var(--red);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke 0.2s;
+    }
+
+    .drop-zone.has-file .dz-icon svg { stroke: var(--green); }
+
+    .dz-text {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .dz-text strong { color: var(--red); font-weight: 500; }
+    .drop-zone.has-file .dz-text strong { color: var(--green); }
+
+    .dz-formats {
+      display: block;
+      font-size: 11px;
+      color: var(--sub);
+      margin-top: 5px;
+    }
+
+    /* File info strip */
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: 9px;
+      margin-top: 10px;
+      padding: 9px 12px;
+      background: rgba(34,197,94,0.07);
+      border: 1px solid rgba(34,197,94,0.18);
+      border-radius: 8px;
+    }
+
+    .file-info.visible { display: flex; }
+
+    .file-info svg {
+      width: 14px; height: 14px;
+      stroke: var(--green);
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .file-info-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .file-info-size {
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    /* ── Schedule row ── */
+    .schedule-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 20px;
+    }
+
+    .schedule-row svg {
+      width: 15px; height: 15px;
+      stroke: var(--muted);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .schedule-text {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .schedule-text b { color: var(--text); font-weight: 500; }
+
+    /* ── Upload button ── */
+    .btn-upload {
+      width: 100%;
+      padding: 17px 20px;
+      background: var(--red);
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+      box-shadow: 0 4px 24px rgba(230,48,48,0.3), 0 1px 4px rgba(0,0,0,0.4);
+    }
+
+    .btn-upload::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50%;
+      background: rgba(255,255,255,0.1);
+      pointer-events: none;
+    }
+
+    .btn-upload:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(230,48,48,0.42), 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .btn-upload:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 12px rgba(230,48,48,0.25);
+    }
+
+    .btn-upload:disabled {
+      background: #1c1c1c;
+      color: var(--sub);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .btn-upload:disabled::before { display: none; }
+
+    /* ── Progress ── */
+    .progress-area {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .progress-area.visible { display: block; }
+
+    .progress-track {
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red) 0%, #ff6b6b 100%);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-caption {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 7px;
+      text-align: center;
+    }
+
+    /* ─────────────────────────────────────────────
+       ADD CHANNEL MODAL
+    ───────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 100;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.open { display: grid; }
+
+    .modal {
+      width: 100%;
+      max-width: 380px;
+      background: #111;
+      border: 1px solid var(--border2);
+      border-radius: 22px;
+      padding: 28px 24px;
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    .modal-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .modal-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .modal-sub a { color: var(--red); text-decoration: none; }
+
+    .modal-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 13px 15px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 14px;
+    }
+
+    .modal-input::placeholder { color: var(--sub); }
+
+    .modal-input:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px var(--red-glow);
+    }
+
+    .modal-error {
+      font-size: 12px;
+      color: #f87171;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .modal-error.visible { display: block; }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-cancel {
+      flex: 1;
+      padding: 13px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-cancel:hover {
+      border-color: var(--border2);
+      color: var(--text);
+    }
+
+    .btn-connect {
+      flex: 2;
+      padding: 13px;
+      background: var(--red);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      box-shadow: 0 4px 16px rgba(230,48,48,0.3);
+    }
+
+    .btn-connect:hover { opacity: 0.9; }
+
+    /* ─────────────────────────────────────────────
+       TOAST NOTIFICATIONS
+    ───────────────────────────────────────────── */
+    .toast-tray {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      width: calc(100% - 36px);
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 13px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      pointer-events: all;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      animation: slideUp 0.35s cubic-bezier(0.34,1.3,0.64,1) both;
+    }
+
+    .toast.success {
+      background: #0d2318;
+      border: 1px solid #1a4a30;
+    }
+
+    .toast.error {
+      background: #1f0c0c;
+      border: 1px solid #4a1a1a;
+    }
+
+    .toast.info {
+      background: #0e1520;
+      border: 1px solid #1e2e48;
+    }
+
+    .toast-icon {
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+
+    .toast-icon svg {
+      width: 18px; height: 18px;
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .toast.success .toast-icon svg { stroke: #4ade80; }
+    .toast.error   .toast-icon svg { stroke: #f87171; }
+    .toast.info    .toast-icon svg { stroke: #60a5fa; }
+
+    .toast-content { flex: 1; min-width: 0; }
+
+    .toast-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+      color: var(--text);
+    }
+
+    .toast.success .toast-title { color: #4ade80; }
+    .toast.error   .toast-title { color: #f87171; }
+    .toast.info    .toast-title { color: #60a5fa; }
+
+    .toast-body {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .toast-link {
+      color: inherit;
+      text-decoration: underline;
+      opacity: 0.85;
+    }
+
+    /* ─────────────────────────────────────────────
+       FOOTER
+    ───────────────────────────────────────────── */
+    .footer {
+      margin-top: 28px;
+      font-size: 12px;
+      color: var(--sub);
+      text-align: center;
+      opacity: 0;
+      animation: revealUp 0.5s 0.35s ease both;
+    }
+
+    /* ─────────────────────────────────────────────
+       ANIMATIONS
+    ───────────────────────────────────────────── */
+    @keyframes revealDown {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes revealUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 15px; height: 15px;
+      border: 2.5px solid rgba(255,255,255,0.25);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    /* ─────────────────────────────────────────────
+       RESPONSIVE TWEAKS
+    ───────────────────────────────────────────── */
+    @media (max-width: 380px) {
+      .app { padding: 38px 14px 70px; }
+      .card { padding: 22px 16px; }
+      .modal { padding: 22px 18px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- ── Header ─────────────────────────────── -->
+    <header class="header">
+      <div class="wordmark">
+        <div class="wordmark-badge">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        <span class="wordmark-title">Shorts<span>Upload</span></span>
+      </div>
+      <p class="header-tagline">Multi-channel YouTube Shorts automation</p>
+    </header>
+
+    <!-- ── Connected channels bar ─────────────── -->
+    <section class="channels-bar">
+      <div class="channels-bar-header">
+        <span class="section-label">Connected Channels</span>
+        <button class="btn-add-channel" id="btnAddChannel">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add channel
+        </button>
+      </div>
+      <div class="channel-pills" id="channelPills">
+        <span class="no-channels-hint" id="noChannelsHint" style="display:none">
+          No channels yet — add one to get started.
+        </span>
+      </div>
+    </section>
+
+    <!-- ── Upload card ─────────────────────────── -->
+    <main class="card">
+
+      <!-- Channel selector -->
+      <div class="form-row">
+        <label class="field-label" for="channelSelect">Channel</label>
+        <div class="select-wrap">
+          <select id="channelSelect" disabled>
+            <option value="">Loading…</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="form-row">
+        <label class="field-label" for="titleInput">Title</label>
+        <div class="title-wrap">
+          <input
+            class="input"
+            type="text"
+            id="titleInput"
+            placeholder="Enter your Short title"
+            maxlength="90"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <span class="char-count" id="charCount">0/90</span>
+        </div>
+      </div>
+
+      <!-- Video file -->
+      <div class="form-row">
+        <label class="field-label">Video File</label>
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="videoInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/webm" />
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" id="dzIconSvg">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div class="dz-text">
+            <strong id="dzLabel">Tap to choose</strong> or drag &amp; drop<br />
+            <span class="dz-formats">MP4 · MOV · AVI · WEBM — max 500 MB</span>
+          </div>
+        </div>
+        <div class="file-info" id="fileInfo">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="file-info-name" id="fileInfoName"></span>
+          <span class="file-info-size" id="fileInfoSize"></span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Schedule info -->
+      <div class="schedule-row">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <p class="schedule-text">
+          Will be set <b>private → public at 17:30</b> today (server local time)
+        </p>
+      </div>
+
+      <!-- CTA -->
+      <button class="btn-upload" id="uploadBtn" disabled>
+        UPLOAD SHORT
+      </button>
+
+      <!-- Progress -->
+      <div class="progress-area" id="progressArea">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-caption" id="progressCaption">Preparing…</p>
+      </div>
+
+    </main>
+
+    <p class="footer">Tokens stored locally · Powered by YouTube Data API v3</p>
+  </div>
+
+  <!-- ── Add Channel Modal ─────────────────────── -->
+  <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <h2 class="modal-title" id="modalTitle">Connect a Channel</h2>
+      <p class="modal-sub">
+        Enter a short nickname for this channel, then you'll be redirected to Google to authorise access.<br />
+        <a href="#" id="gcpLink" target="_blank">How to set up Google credentials →</a>
+      </p>
+      <input
+        class="modal-input"
+        type="text"
+        id="modalChannelInput"
+        placeholder="e.g. my-channel, brand-account"
+        maxlength="64"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <p class="modal-error" id="modalError"></p>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btnCancel">Cancel</button>
+        <button class="btn-connect" id="btnConnect">Connect →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast tray ─────────────────────────────── -->
+  <div class="toast-tray" id="toastTray" aria-live="polite"></div>
+
+  <!-- ═══════════════════════════════════════════
+       JAVASCRIPT
+  ════════════════════════════════════════════ -->
+  <script>
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const $  = id => document.getElementById(id);
+    const channelSelect   = $('channelSelect');
+    const channelPills    = $('channelPills');
+    const noChannelsHint  = $('noChannelsHint');
+    const titleInput      = $('titleInput');
+    const charCount       = $('charCount');
+    const dropZone        = $('dropZone');
+    const videoInput      = $('videoInput');
+    const dzIconSvg       = $('dzIconSvg');
+    const dzLabel         = $('dzLabel');
+    const fileInfo        = $('fileInfo');
+    const fileInfoName    = $('fileInfoName');
+    const fileInfoSize    = $('fileInfoSize');
+    const uploadBtn       = $('uploadBtn');
+    const progressArea    = $('progressArea');
+    const progressFill    = $('progressFill');
+    const progressCaption = $('progressCaption');
+    const modalOverlay    = $('modalOverlay');
+    const modalChannelInput = $('modalChannelInput');
+    const modalError      = $('modalError');
+    const btnAddChannel   = $('btnAddChannel');
+    const btnCancel       = $('btnCancel');
+    const btnConnect      = $('btnConnect');
+    const toastTray       = $('toastTray');
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let selectedFile  = null;
+    let uploading     = false;
+    let channelList   = [];
+
+    // ── Load channels from /channels ─────────────────────────────────────────
+    async function loadChannels() {
+      try {
+        const res  = await fetch('/channels');
+        const data = await res.json();
+        channelList = data.channels || [];
+        renderChannels();
+      } catch {
+        channelSelect.innerHTML = '<option value="">⚠ Could not reach server</option>';
+      }
+    }
+
+    function renderChannels() {
+      // Pills
+      channelPills.innerHTML = '';
+
+      if (channelList.length === 0) {
+        channelPills.appendChild(noChannelsHint);
+        noChannelsHint.style.display = 'block';
+      } else {
+        noChannelsHint.style.display = 'none';
+        channelList.forEach(ch => {
+          const pill = document.createElement('span');
+          pill.className = 'channel-pill';
+          pill.innerHTML = `
+            <span class="dot"></span>
+            <span>${esc(ch)}</span>
+            <button class="remove-pill" aria-label="Remove ${esc(ch)}" data-channel="${esc(ch)}">
+              <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>`;
+          channelPills.appendChild(pill);
+        });
+      }
+
+      // Dropdown
+      channelSelect.innerHTML = '';
+      if (channelList.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No channels — add one first';
+        channelSelect.appendChild(opt);
+        channelSelect.disabled = true;
+      } else {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Select channel…';
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        channelSelect.appendChild(placeholder);
+        channelList.forEach(ch => {
+          const opt = document.createElement('option');
+          opt.value = ch;
+          opt.textContent = `📺 ${ch}`;
+          channelSelect.appendChild(opt);
+        });
+        channelSelect.disabled = false;
+      }
+
+      validateForm();
+    }
+
+    // ── Remove channel ────────────────────────────────────────────────────────
+    channelPills.addEventListener('click', async e => {
+      const btn = e.target.closest('.remove-pill');
+      if (!btn) return;
+      const name = btn.dataset.channel;
+      if (!confirm(`Disconnect "${name}"?`)) return;
+      try {
+        const res = await fetch(`/channels/${encodeURIComponent(name)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error((await res.json()).error);
+        channelList = channelList.filter(c => c !== name);
+        renderChannels();
+        toast('info', 'Channel removed', `"${name}" has been disconnected.`);
+      } catch (err) {
+        toast('error', 'Remove failed', err.message);
+      }
+    });
+
+    // ── Title character counter ───────────────────────────────────────────────
+    titleInput.addEventListener('input', () => {
+      const len = titleInput.value.length;
+      charCount.textContent = `${len}/90`;
+      charCount.className = 'char-count' + (len > 80 ? (len > 90 ? ' over' : ' warn') : '');
+      validateForm();
+    });
+
+    // ── File handling ─────────────────────────────────────────────────────────
+    function applyFile(file) {
+      if (!file) return;
+      selectedFile = file;
+
+      // Update drop zone appearance
+      dropZone.classList.add('has-file');
+      dzLabel.textContent = 'File selected';
+      dzIconSvg.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+
+      // Show file info strip
+      fileInfoName.textContent = file.name;
+      fileInfoSize.textContent = formatBytes(file.size);
+      fileInfo.classList.add('visible');
+
+      validateForm();
+    }
+
+    videoInput.addEventListener('change', () => {
+      if (videoInput.files[0]) applyFile(videoInput.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer?.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('video/')) {
+        toast('error', 'Wrong file type', 'Please drop a video file (MP4, MOV, AVI, WEBM).');
+        return;
+      }
+      applyFile(file);
+    });
+
+    // ── Channel select & form validation ─────────────────────────────────────
+    channelSelect.addEventListener('change', validateForm);
+
+    function validateForm() {
+      const ready =
+        channelSelect.value &&
+        titleInput.value.trim().length > 0 &&
+        selectedFile &&
+        !uploading;
+      uploadBtn.disabled = !ready;
+    }
+
+    // ── Upload ────────────────────────────────────────────────────────────────
+    uploadBtn.addEventListener('click', doUpload);
+
+    async function doUpload() {
+      if (uploading) return;
+      uploading = true;
+      validateForm();
+
+      uploadBtn.innerHTML = '<span class="spinner"></span>UPLOADING…';
+      progressArea.classList.add('visible');
+      setProgress(5, 'Preparing upload…');
+
+      const fd = new FormData();
+      fd.append('video',       selectedFile);
+      fd.append('title',       titleInput.value.trim());
+      fd.append('channelName', channelSelect.value);
+
+      try {
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress (bytes over wire)
+        xhr.upload.addEventListener('progress', e => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 85);
+            setProgress(pct, `Uploading… ${pct}%`);
+          }
+        });
+
+        const response = await new Promise((resolve, reject) => {
+          xhr.open('POST', '/upload-short');
+          xhr.onload  = () => resolve(xhr);
+          xhr.onerror = () => reject(new Error('Network error — is the server running?'));
+          xhr.send(fd);
+        });
+
+        setProgress(95, 'Processing on YouTube…');
+        const body = JSON.parse(response.responseText);
+
+        if (response.status >= 200 && response.status < 300) {
+          setProgress(100, 'Done!');
+          toast('success',
+            'Short scheduled! 🎉',
+            `"${body.title}" — publishes at <b>${fmtTime(body.publishAt)}</b>`,
+            body.youtubeUrl
+          );
+          resetForm();
+          loadChannels(); // refresh channel list
+        } else {
+          throw new Error(body.error + (body.detail ? ` — ${body.detail}` : '') + (body.fix ? `\n${body.fix}` : ''));
+        }
+      } catch (err) {
+        toast('error', 'Upload failed', err.message);
+      } finally {
+        uploading = false;
+        uploadBtn.innerHTML = 'UPLOAD SHORT';
+        setTimeout(() => {
+          progressArea.classList.remove('visible');
+          setProgress(0, '');
+        }, 1800);
+        validateForm();
+      }
+    }
+
+    function setProgress(pct, caption) {
+      progressFill.style.width = pct + '%';
+      progressCaption.textContent = caption;
+    }
+
+    function resetForm() {
+      titleInput.value  = '';
+      charCount.textContent = '0/90';
+      charCount.className = 'char-count';
+      videoInput.value  = '';
+      selectedFile = null;
+
+      dropZone.classList.remove('has-file');
+      dzLabel.textContent = 'Tap to choose';
+      dzIconSvg.innerHTML = `
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>`;
+
+      fileInfo.classList.remove('visible');
+      channelSelect.selectedIndex = 0;
+      validateForm();
+    }
+
+    // ── Add channel modal ─────────────────────────────────────────────────────
+    btnAddChannel.addEventListener('click', openModal);
+    btnCancel.addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
+
+    function openModal() {
+      modalChannelInput.value = '';
+      modalError.className    = 'modal-error';
+      modalOverlay.classList.add('open');
+      setTimeout(() => modalChannelInput.focus(), 100);
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove('open');
+    }
+
+    modalChannelInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') btnConnect.click();
+      if (e.key === 'Escape') closeModal();
+    });
+
+    btnConnect.addEventListener('click', () => {
+      const name = modalChannelInput.value.trim();
+      if (!name) {
+        showModalError('Please enter a channel name.');
+        return;
+      }
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) {
+        showModalError('Only letters, numbers, hyphens and underscores allowed (max 64 chars).');
+        return;
+      }
+      if (channelList.includes(name)) {
+        showModalError(`"${name}" is already connected.`);
+        return;
+      }
+      closeModal();
+      // Redirect to OAuth flow
+      window.location.href = `/auth/${encodeURIComponent(name)}`;
+    });
+
+    function showModalError(msg) {
+      modalError.textContent = msg;
+      modalError.classList.add('visible');
+      modalChannelInput.focus();
+    }
+
+    // ── Toasts ────────────────────────────────────────────────────────────────
+    function toast(type, title, body, url) {
+      const icons = {
+        success: '<polyline points="20 6 9 17 4 12"/>',
+        error:   '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+        info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12.01" y2="16"/><line x1="12" y1="8" x2="12" y2="12"/>',
+      };
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.innerHTML = `
+        <div class="toast-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${icons[type]}</svg></div>
+        <div class="toast-content">
+          <div class="toast-title">${esc(title)}</div>
+          <div class="toast-body">${body}${url ? ` &mdash; <a class="toast-link" href="${url}" target="_blank">View on YouTube ↗</a>` : ''}</div>
+        </div>`;
+      toastTray.appendChild(el);
+      const ttl = type === 'error' ? 7000 : 6000;
+      setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.4s'; setTimeout(() => el.remove(), 400); }, ttl);
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function formatBytes(b) {
+      if (b >= 1024*1024*1024) return (b/(1024*1024*1024)).toFixed(1)+' GB';
+      if (b >= 1024*1024)      return (b/(1024*1024)).toFixed(1)+' MB';
+      return (b/1024).toFixed(0)+' KB';
+    }
+
+    function fmtTime(iso) {
+      if (!iso) return '17:30 today';
+      try {
+        return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      } catch { return iso; }
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    loadChannels();
+
+    // Re-load if user returns from OAuth tab
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadChannels();
+    });
+  </script>
+</body>
+</html>
